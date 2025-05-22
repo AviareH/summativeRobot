@@ -25,8 +25,8 @@ void setup() {
 
   frontRight.attach(18, 1000, 2000);
   backRight.attach(19, 1000, 2000);
-  frontLeft.attach(20, 1000, 2000);
-  backLeft.attach(21, 1000, 2000);
+  frontLeft.attach(21, 1000, 2000);
+  backLeft.attach(22, 1000, 2000);
 
   frontRight.writeMicroseconds(1500);
   backRight.writeMicroseconds(1500);
