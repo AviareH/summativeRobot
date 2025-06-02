@@ -9,6 +9,9 @@ WiFiServer server(80);
 
 Servo frontRight, backRight, frontLeft, backLeft;
 
+int leftY = 1500;
+int rightY = 1500;
+
 void setup() {
   Serial.begin(115200);
   WiFi.softAP(ssid, password);
@@ -28,10 +31,7 @@ void setup() {
   frontLeft.attach(21, 1000, 2000);
   backLeft.attach(22, 1000, 2000);
 
-  frontRight.writeMicroseconds(1500);
-  backRight.writeMicroseconds(1500);
-  frontLeft.writeMicroseconds(1500);
-  backLeft.writeMicroseconds(1500);
+  applyMotorSpeeds();
 }
 
 void loop() {
@@ -41,22 +41,23 @@ void loop() {
     Serial.println("Request: " + request);
     client.flush();
 
-    // Parse joystick commands: /joystick?side=l&y=1600 or side=r
     if (request.indexOf("/joystick?") != -1) {
       int sideIndex = request.indexOf("side=");
       int yIndex = request.indexOf("y=");
+
       if (sideIndex != -1 && yIndex != -1) {
         char side = request.charAt(sideIndex + 5);
         int yVal = request.substring(yIndex + 2).toInt();
         yVal = constrain(yVal, 1000, 2000);
+        yVal = applyDeadzone(yVal);  // snap to neutral if within deadzone
 
         if (side == 'l') {
-          frontLeft.writeMicroseconds(yVal);
-          backLeft.writeMicroseconds(yVal);
+          leftY = yVal;
         } else if (side == 'r') {
-          frontRight.writeMicroseconds(map(yVal, 1000, 2000, 2000, 1000));
-          backRight.writeMicroseconds(map(yVal, 1000, 2000, 2000, 1000));
+          rightY = yVal;
         }
+
+        applyMotorSpeeds();
       }
     }
 
@@ -70,4 +71,21 @@ void loop() {
     delay(1);
     client.stop();
   }
+}
+
+int applyDeadzone(int val) {
+  if (abs(val - 1500) < 25) {
+    return 1500;
+  }
+  return val;
+}
+
+void applyMotorSpeeds() {
+  // Left side (not inverted)
+  frontLeft.writeMicroseconds(leftY);
+  backLeft.writeMicroseconds(leftY);
+
+  // Right side (inverted)
+  frontRight.writeMicroseconds(map(rightY, 1000, 2000, 2000, 1000));
+  backRight.writeMicroseconds(map(rightY, 1000, 2000, 2000, 1000));
 }
