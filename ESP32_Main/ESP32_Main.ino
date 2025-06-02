@@ -52,9 +52,9 @@ void loop() {
 
         if (side == 'l') {
           frontLeft.writeMicroseconds(yVal);
-          backLeft.writeMicroseconds(map(yVal, 1000, 2000, 2000, 1000));
+          backLeft.writeMicroseconds(yVal;
         } else if (side == 'r') {
-          frontRight.writeMicroseconds(yVal);
+          frontRight.writeMicroseconds(map(yVal, 1000, 2000, 2000, 1000));
           backRight.writeMicroseconds(map(yVal, 1000, 2000, 2000, 1000));
         }
       }
