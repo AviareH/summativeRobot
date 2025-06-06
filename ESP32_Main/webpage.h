@@ -28,42 +28,62 @@ const char index_html[] PROGMEM = R"rawliteral(
       background: #e0e0e0;
       border-radius: 50%;
       touch-action: none;
+      position: relative;
+    }
+    .label {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    .joystick-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
   </style>
 </head>
 <body>
   <div id="container">
-    <div id="left" class="zone"></div>
-    <div id="right" class="zone"></div>
+    <div class="joystick-container">
+      <div id="left" class="zone"></div>
+      <div class="label" id="leftVal">1500</div>
+    </div>
+    <div class="joystick-container">
+      <div id="right" class="zone"></div>
+      <div class="label" id="rightVal">1500</div>
+    </div>
   </div>
 
   <script>
-    function sendY(side, y) {
-      fetch('/joystick?side=' + side + '&y=' + y);
+    function sendY(side, val) {
+      fetch('/joystick?side=' + side + '&y=' + val);
     }
 
-    function setupJoystick(id, side) {
+    function setupJoystick(id, side, axis) {
       const zone = document.getElementById(id);
-      let centerY = 0;
+      const label = document.getElementById(id + 'Val');
+      let center = 0;
       let dragging = false;
       let lastSent = 1500;
 
       zone.addEventListener('touchstart', e => {
         dragging = true;
         const rect = zone.getBoundingClientRect();
-        centerY = rect.top + rect.height / 2;
+        center = axis === 'y' ? rect.top + rect.height / 2 : rect.left + rect.width / 2;
       });
 
       zone.addEventListener('touchmove', e => {
         if (!dragging) return;
         e.preventDefault();
         const touch = e.touches[0];
-        let dy = touch.clientY - centerY;
-        dy = Math.max(-100, Math.min(100, dy));
-        let output = Math.round(1500 - dy * 5);
+        let delta = axis === 'y' ? touch.clientY - center : touch.clientX - center;
+        delta = Math.max(-100, Math.min(100, delta));
+        let output = Math.round(1500 - delta * 5);
         output = Math.max(1000, Math.min(2000, output));
         if (output !== lastSent) {
           sendY(side, output);
+          label.textContent = output;
           lastSent = output;
         }
       });
@@ -71,12 +91,13 @@ const char index_html[] PROGMEM = R"rawliteral(
       zone.addEventListener('touchend', e => {
         dragging = false;
         sendY(side, 1500);
+        label.textContent = 1500;
         lastSent = 1500;
       });
     }
 
-    setupJoystick('left', 'left');
-    setupJoystick('right', 'right');
+    setupJoystick('left', 'left', 'x');   // Left joystick = turning (X-axis)
+    setupJoystick('right', 'right', 'y'); // Right joystick = forward/backward (Y-axis)
   </script>
 </body>
 </html>
