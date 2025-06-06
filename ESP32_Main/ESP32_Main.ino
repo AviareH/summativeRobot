@@ -9,9 +9,6 @@ WiFiServer server(80);
 
 Servo frontRight, backRight, frontLeft, backLeft;
 
-int leftY = 1500;
-int rightY = 1500;
-
 void setup() {
   Serial.begin(115200);
   WiFi.softAP(ssid, password);
@@ -31,7 +28,24 @@ void setup() {
   frontLeft.attach(21, 1000, 2000);
   backLeft.attach(22, 1000, 2000);
 
-  applyMotorSpeeds();
+  frontRight.writeMicroseconds(1500);
+  backRight.writeMicroseconds(1500);
+  frontLeft.writeMicroseconds(1500);
+  backLeft.writeMicroseconds(1500);
+}
+
+void applyDrive(int driveVal) {
+  frontLeft.writeMicroseconds(driveVal);
+  backLeft.writeMicroseconds(driveVal);
+  frontRight.writeMicroseconds(map(driveVal, 1000, 2000, 2000, 1000));
+  backRight.writeMicroseconds(map(driveVal, 1000, 2000, 2000, 1000));
+}
+
+void applyTurn(int turnVal) {
+  frontLeft.writeMicroseconds(turnVal);
+  backLeft.writeMicroseconds(turnVal);
+  frontRight.writeMicroseconds(turnVal);
+  backRight.writeMicroseconds(turnVal);
 }
 
 void loop() {
@@ -41,27 +55,29 @@ void loop() {
     Serial.println("Request: " + request);
     client.flush();
 
-    if (request.indexOf("/joystick?") != -1) {
-      int sideIndex = request.indexOf("side=");
+    if (request.indexOf("/drive?") != -1) {
       int yIndex = request.indexOf("y=");
-
-      if (sideIndex != -1 && yIndex != -1) {
-        char side = request.charAt(sideIndex + 5);
+      if (yIndex != -1) {
         int yVal = request.substring(yIndex + 2).toInt();
         yVal = constrain(yVal, 1000, 2000);
-        yVal = applyDeadzone(yVal);  // snap to neutral if within deadzone
-
-        if (side == 'l') {
-          leftY = yVal;
-        } else if (side == 'r') {
-          rightY = yVal;
-        }
-
-        applyMotorSpeeds();
+        if (abs(yVal - 1500) < 25) yVal = 1500; // Deadzone
+        applyDrive(yVal);
+      }
+    } else if (request.indexOf("/turn?") != -1) {
+      int xIndex = request.indexOf("x=");
+      if (xIndex != -1) {
+        int xVal = request.substring(xIndex + 2).toInt();
+        xVal = constrain(xVal, 1000, 2000);
+        if (abs(xVal - 1500) < 25) xVal = 1500; // Deadzone
+        int left = xVal;
+        int right = map(xVal, 1000, 2000, 2000, 1000);
+        frontLeft.writeMicroseconds(left);
+        backLeft.writeMicroseconds(left);
+        frontRight.writeMicroseconds(right);
+        backRight.writeMicroseconds(right);
       }
     }
 
-    // Send webpage
     client.println("HTTP/1.1 200 OK");
     client.println("Content-Type: text/html");
     client.println("Connection: close");
@@ -71,21 +87,4 @@ void loop() {
     delay(1);
     client.stop();
   }
-}
-
-int applyDeadzone(int val) {
-  if (abs(val - 1500) < 25) {
-    return 1500;
-  }
-  return val;
-}
-
-void applyMotorSpeeds() {
-  // Left side (not inverted)
-  frontLeft.writeMicroseconds(leftY);
-  backLeft.writeMicroseconds(leftY);
-
-  // Right side (inverted)
-  frontRight.writeMicroseconds(map(rightY, 1000, 2000, 2000, 1000));
-  backRight.writeMicroseconds(map(rightY, 1000, 2000, 2000, 1000));
 }
