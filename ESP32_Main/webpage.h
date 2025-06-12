@@ -15,6 +15,19 @@ const char index_html[] PROGMEM = R"rawliteral(
       background-color: #f8f8f8;
       font-family: sans-serif;
     }
+    section {
+      position: absolute;
+      top: 20px;
+      right: 5px;
+      border-radius: 15px;
+      margin: 10px;
+      height: 100px;
+      width: 200px;
+      padding: 5px;
+      background-color:aqua;
+      display: flex;
+      flex-direction: column;
+    }
     #container {
       display: flex;
       justify-content: space-around;
@@ -44,6 +57,13 @@ const char index_html[] PROGMEM = R"rawliteral(
   </style>
 </head>
 <body>
+  <section>
+    <div>Accelerometer</div>
+    <div>
+    Acceleration X = <span id="x_acceleration">0</span> m/s&sup2;<br>
+    Acceleration Y = <span id="y_acceleration">0</span> m/s&sup2;
+    </div>
+  </section>
   <div id="container">
     <div class="joystick-container">
       <div id="left" class="zone"></div>
@@ -56,11 +76,12 @@ const char index_html[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
-    function sendY(side, val) {
-      fetch('/joystick?side=' + side + '&y=' + val);
+    function send(valType, val) {
+      const endpoint = valType === 'x' ? '/turn?x=' : '/drive?y=';
+      fetch(endpoint + val);
     }
 
-    function setupJoystick(id, side, axis) {
+    function setupJoystick(id, axis) {
       const zone = document.getElementById(id);
       const label = document.getElementById(id + 'Val');
       let center = 0;
@@ -82,7 +103,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         let output = Math.round(1500 - delta * 5);
         output = Math.max(1000, Math.min(2000, output));
         if (output !== lastSent) {
-          sendY(side, output);
+          send(axis, output);
           label.textContent = output;
           lastSent = output;
         }
@@ -90,14 +111,28 @@ const char index_html[] PROGMEM = R"rawliteral(
 
       zone.addEventListener('touchend', e => {
         dragging = false;
-        sendY(side, 1500);
+        send(axis, 1500);
         label.textContent = 1500;
         lastSent = 1500;
       });
     }
 
-    setupJoystick('left', 'left', 'x');   // Left joystick = turning (X-axis)
-    setupJoystick('right', 'right', 'y'); // Right joystick = forward/backward (Y-axis)
+    setupJoystick('left', 'x');   // Left joystick = turning (X-axis)
+    setupJoystick('right', 'y');  // Right joystick = forward/backward (Y-axis)
+
+    setInterval(function() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        const text = this.responseText;
+        const myArr = JSON.parse(text);
+       document.getElementById("x_acceleration").innerHTML = myArr[0];
+        document.getElementById("y_acceleration").innerHTML = myArr[1];
+      }
+    };
+    xhttp.open("GET", "read_Web_MPU6050", true);
+    xhttp.send();
+  },100);
   </script>
 </body>
 </html>
