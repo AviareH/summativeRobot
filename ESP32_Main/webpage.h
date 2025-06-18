@@ -21,10 +21,10 @@ const char index_html[] PROGMEM = R"rawliteral(
       right: 5px;
       border-radius: 15px;
       margin: 10px;
-      height: 100px;
+      height: auto;
       width: 200px;
-      padding: 5px;
-      background-color:aqua;
+      padding: 10px;
+      background-color: aqua;
       display: flex;
       flex-direction: column;
     }
@@ -54,6 +54,16 @@ const char index_html[] PROGMEM = R"rawliteral(
       flex-direction: column;
       align-items: center;
     }
+    .auto-button {
+      background-color: red;
+      color: white;
+      border: none;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -63,6 +73,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     Acceleration X = <span id="x_acceleration">0</span> m/s&sup2;<br>
     Acceleration Y = <span id="y_acceleration">0</span> m/s&sup2;
     </div>
+    <button id="autoBtn" class="auto-button" onclick="toggleAuto()">Auto</button>
   </section>
   <div id="container">
     <div class="joystick-container">
@@ -76,7 +87,10 @@ const char index_html[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
+    let autoMode = false;
+
     function send(valType, val) {
+      if (autoMode) return;
       const endpoint = valType === 'x' ? '/turn?x=' : '/drive?y=';
       fetch(endpoint + val);
     }
@@ -95,7 +109,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       });
 
       zone.addEventListener('touchmove', e => {
-        if (!dragging) return;
+        if (!dragging || autoMode) return;
         e.preventDefault();
         const touch = e.touches[0];
         let delta = axis === 'y' ? touch.clientY - center : touch.clientX - center;
@@ -111,28 +125,36 @@ const char index_html[] PROGMEM = R"rawliteral(
 
       zone.addEventListener('touchend', e => {
         dragging = false;
-        send(axis, 1500);
-        label.textContent = 1500;
-        lastSent = 1500;
+        if (!autoMode) {
+          send(axis, 1500);
+          label.textContent = 1500;
+          lastSent = 1500;
+        }
       });
+    }
+
+    function toggleAuto() {
+      autoMode = !autoMode;
+      document.getElementById("autoBtn").textContent = autoMode ? "Manual" : "Auto";
+      fetch(autoMode ? '/auto/on' : '/auto/off');
     }
 
     setupJoystick('left', 'x');   // Left joystick = turning (X-axis)
     setupJoystick('right', 'y');  // Right joystick = forward/backward (Y-axis)
 
     setInterval(function() {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-      if (this.readyState == 4 && this.status == 200) {
-        const text = this.responseText;
-        const myArr = JSON.parse(text);
-       document.getElementById("x_acceleration").innerHTML = myArr[0];
-        document.getElementById("y_acceleration").innerHTML = myArr[1];
-      }
-    };
-    xhttp.open("GET", "read_Web_MPU6050", true);
-    xhttp.send();
-  },100);
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          const text = this.responseText;
+          const myArr = JSON.parse(text);
+         document.getElementById("x_acceleration").innerHTML = myArr[0];
+          document.getElementById("y_acceleration").innerHTML = myArr[1];
+        }
+      };
+      xhttp.open("GET", "read_Web_MPU6050", true);
+      xhttp.send();
+    }, 100);
   </script>
 </body>
 </html>
